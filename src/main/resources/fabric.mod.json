@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "whatif",
+  "version": "${version}",
+  "name": "WhatIf",
+  "description": "Petit mod QoL côté client : pseudo personnalisé et Dark Screen. Menu : /whatif.",
+  "authors": ["Mine"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["fr.mine.customnick.CustomNickClient"]
+  },
+  "mixins": ["whatif.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

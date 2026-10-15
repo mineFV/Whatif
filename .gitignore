@@ -1,0 +1,24 @@
+# Gradle / build
+.gradle/
+build/
+out/
+
+# Dossier de lancement du client de dev (monde, options, logs...)
+run/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+bin/
+
+# Système
+.DS_Store
+Thumbs.db
+
+# Logs et rapports de crash
+*.log
+hs_err_pid*

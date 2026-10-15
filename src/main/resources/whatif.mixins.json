@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "package": "fr.mine.customnick.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": ["MixinFont", "MixinHud"],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
