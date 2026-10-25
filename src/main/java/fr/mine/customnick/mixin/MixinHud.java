@@ -1,6 +1,7 @@
 package fr.mine.customnick.mixin;
 
 import fr.mine.customnick.DarkScreen;
+import fr.mine.customnick.MusicHud;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
@@ -28,6 +29,7 @@ public abstract class MixinHud {
 
     @Inject(method = RENDER, at = @At("TAIL"))
     private void customnick$darkAfterHud(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        MusicHud.draw(graphics); // fait partie du HUD
         if (DarkScreen.tintHud()) DarkScreen.draw(graphics);
     }
 }

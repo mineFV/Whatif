@@ -19,6 +19,7 @@ public class CustomNickClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         NickConfig.load();
+        MusicTracker.start();
 
         // Seule commande du mod : /whatif ouvre le menu principal
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->

@@ -7,6 +7,8 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Config locale : .minecraft/config/whatif.json */
 public final class NickConfig {
@@ -32,6 +34,19 @@ public final class NickConfig {
     /** true = le HUD (hotbar, vie...) est assombri lui aussi. */
     public static volatile boolean darkScreenTintHud = false;
 
+    // ---- HUD musique (MPRIS via playerctl)
+
+    public static volatile boolean musicHudEnabled = false;
+    /** Taille en % (50 à 200). */
+    public static volatile int musicHudScale = 100;
+    /** Position en % de l'espace libre de l'écran. */
+    public static volatile int musicHudX = 1;
+    public static volatile int musicHudY = 30;
+    /** Lecteur à suivre (ex : "firefox", "chromium", "YoutubeMusic"), vide = automatique. */
+    public static volatile String musicPlayer = "";
+    /** Lecteurs à ignorer (ex : "firefox" pour ne pas afficher les vidéos YouTube). */
+    public static volatile List<String> musicBlacklist = List.of();
+
     private static final class Data {
         boolean enabled = true;
         String displayName = "&bMonPseudo";
@@ -40,6 +55,13 @@ public final class NickConfig {
         boolean darkScreenEnabled = false;
         int darkScreenOpacity = 25;
         boolean darkScreenTintHud = false;
+
+        boolean musicHudEnabled = false;
+        int musicHudScale = 100;
+        int musicHudX = 1;
+        int musicHudY = 30;
+        String musicPlayer = "";
+        List<String> musicBlacklist = new ArrayList<>();
     }
 
     private NickConfig() {}
@@ -61,6 +83,14 @@ public final class NickConfig {
             darkScreenOpacity = Math.max(1, Math.min(80, data.darkScreenOpacity));
             darkScreenTintHud = data.darkScreenTintHud;
 
+            musicHudEnabled = data.musicHudEnabled;
+            musicHudScale = Math.max(50, Math.min(200, data.musicHudScale));
+            musicHudX = Math.max(0, Math.min(100, data.musicHudX));
+            musicHudY = Math.max(0, Math.min(100, data.musicHudY));
+            musicPlayer = data.musicPlayer == null ? "" : data.musicPlayer;
+            musicBlacklist = data.musicBlacklist == null ? List.of()
+                : data.musicBlacklist.stream().filter(s -> s != null && !s.isBlank()).map(String::trim).toList();
+
             if (source == LEGACY_PATH) save(); // migration vers whatif.json
         } catch (Exception e) {
             CustomNickClient.LOGGER.error("Impossible de lire {}", source, e);
@@ -76,6 +106,13 @@ public final class NickConfig {
         data.darkScreenEnabled = darkScreenEnabled;
         data.darkScreenOpacity = darkScreenOpacity;
         data.darkScreenTintHud = darkScreenTintHud;
+
+        data.musicHudEnabled = musicHudEnabled;
+        data.musicHudScale = musicHudScale;
+        data.musicHudX = musicHudX;
+        data.musicHudY = musicHudY;
+        data.musicPlayer = musicPlayer;
+        data.musicBlacklist = new ArrayList<>(musicBlacklist);
         try {
             Files.writeString(PATH, GSON.toJson(data));
         } catch (IOException e) {
