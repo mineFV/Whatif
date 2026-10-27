@@ -2,6 +2,7 @@ package fr.mine.customnick;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
@@ -399,6 +400,13 @@ public class NickScreen extends Screen {
         NickConfig.enabled = enabled;
         NickConfig.save();
         this.onClose();
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        // flèches : pilotent le slider de couleur survolé (rouge, vert, bleu)
+        if (ArrowAdjustable.handleHovered(this, event)) return true;
+        return super.keyPressed(event);
     }
 
     @Override

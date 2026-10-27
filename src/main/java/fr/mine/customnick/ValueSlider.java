@@ -6,13 +6,14 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
 
 /** Slider arrondi pour une valeur entière entre min et max (ex : opacité 1-80 %). */
-public class ValueSlider extends AbstractWidget {
+public class ValueSlider extends AbstractWidget implements ArrowAdjustable {
     private final String name;
     private final int min;
     private final int max;
@@ -54,7 +55,7 @@ public class ValueSlider extends AbstractWidget {
         int fillW = (int) Math.round(w * r);
         if (fillW > 0) Glass.fillRounded(graphics, x, y, Math.max(fillW, 8), h, 6, 0x90000000 | Glass.ACCENT);
 
-        Glass.outlineRounded(graphics, x, y, w, h, 6, isHovered() ? 0x70FFFFFF : 0x3CFFFFFF);
+        Glass.outlineRounded(graphics, x, y, w, h, 6, (isHovered() || isFocused()) ? 0xDDA9D4FF : 0x3CFFFFFF);
 
         int kx = x + (int) Math.round((w - 6) * r);
         Glass.fillRounded(graphics, kx, y + 1, 6, h - 2, 3, 0xF2FFFFFF);
@@ -74,6 +75,21 @@ public class ValueSlider extends AbstractWidget {
     @Override
     protected void onDrag(MouseButtonEvent event, double dragX, double dragY) {
         setFromMouse(event.x());
+    }
+
+    /** Flèches : ±1 (±10 avec Maj). */
+    @Override
+    public boolean adjustWithArrows(KeyEvent event) {
+        int dir = ArrowAdjustable.direction(event);
+        if (dir == 0) return false;
+        int v = getter.getAsInt() + dir * ArrowAdjustable.multiplier(event);
+        setter.accept(Math.max(min, Math.min(max, v)));
+        return true;
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        return adjustWithArrows(event) || super.keyPressed(event);
     }
 
     @Override

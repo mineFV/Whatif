@@ -6,13 +6,14 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
 
 /** Slider 0-255 arrondi pour un canal (rouge, vert ou bleu) d'une couleur RGB. */
-public class ChannelSlider extends AbstractWidget {
+public class ChannelSlider extends AbstractWidget implements ArrowAdjustable {
     private final String name;
     private final int shift;
     private final int tint;
@@ -56,7 +57,7 @@ public class ChannelSlider extends AbstractWidget {
         int fillW = (int) Math.round(w * (v / 255.0));
         if (fillW > 0) Glass.fillRounded(graphics, x, y, Math.max(fillW, 8), h, 6, 0xA0000000 | (tint & 0xFFFFFF));
 
-        Glass.outlineRounded(graphics, x, y, w, h, 6, isHovered() ? 0x70FFFFFF : 0x3CFFFFFF);
+        Glass.outlineRounded(graphics, x, y, w, h, 6, (isHovered() || isFocused()) ? 0xDDA9D4FF : 0x3CFFFFFF);
 
         // poignée
         int kx = x + (int) Math.round((w - 6) * (v / 255.0));
@@ -78,6 +79,22 @@ public class ChannelSlider extends AbstractWidget {
     @Override
     protected void onDrag(MouseButtonEvent event, double dragX, double dragY) {
         setFromMouse(event.x());
+    }
+
+    /** Flèches : ±1 sur le canal (±10 avec Maj). */
+    @Override
+    public boolean adjustWithArrows(KeyEvent event) {
+        int dir = ArrowAdjustable.direction(event);
+        if (dir == 0) return false;
+        int v = Math.max(0, Math.min(255, value() + dir * ArrowAdjustable.multiplier(event)));
+        int color = colorGetter.getAsInt();
+        colorSetter.accept((color & ~(0xFF << shift)) | (v << shift));
+        return true;
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        return adjustWithArrows(event) || super.keyPressed(event);
     }
 
     @Override

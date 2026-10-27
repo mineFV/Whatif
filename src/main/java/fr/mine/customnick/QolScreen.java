@@ -2,6 +2,7 @@ package fr.mine.customnick;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 
 import java.util.function.BooleanSupplier;
@@ -134,6 +135,13 @@ public class QolScreen extends Screen {
     private int musicStatusColor() {
         if (NickConfig.musicHudEnabled && MusicTracker.problem() != null) return 0xFFFF7777;
         return 0xFFB4BCC8;
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        // flèches : pilotent le slider survolé (opacité du Dark Screen...)
+        if (ArrowAdjustable.handleHovered(this, event)) return true;
+        return super.keyPressed(event);
     }
 
     @Override

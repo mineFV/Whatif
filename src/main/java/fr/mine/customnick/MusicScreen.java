@@ -179,8 +179,8 @@ public class MusicScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        // flèches : pilotent le slider X / Y survolé, sans avoir à cliquer dessus
-        if (DecimalSlider.handleHovered(this, event)) return true;
+        // flèches : pilotent le slider survolé, sans avoir à cliquer dessus
+        if (ArrowAdjustable.handleHovered(this, event)) return true;
         return super.keyPressed(event);
     }
 
