@@ -10,11 +10,22 @@ base {
     archivesName = project.archives_base_name
 }
 
+repositories {
+    // Mod Menu (TerraformersMC)
+    maven {
+        name = "Terraformers"
+        url = "https://maven.terraformersmc.com/"
+    }
+}
+
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
 
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Mod Menu : seulement pour compiler l'intégration (WhatIf fonctionne aussi sans Mod Menu)
+    compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
 }
 
 processResources {
