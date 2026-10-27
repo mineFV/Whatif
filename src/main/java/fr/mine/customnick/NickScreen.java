@@ -134,7 +134,7 @@ public class NickScreen extends Screen {
         }
 
         glass(sx, actionsY, sideW, 20, Component.literal("Mode avancé"),
-            btn -> this.minecraft.setScreenAndShow(new NickAdvancedScreen(parent)), null);
+            btn -> this.minecraft.gui.setScreen(new NickAdvancedScreen(parent)), null);
     }
 
     private void buildActions() {
@@ -403,7 +403,7 @@ public class NickScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.setScreenAndShow(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override

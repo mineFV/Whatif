@@ -53,7 +53,7 @@ public class NickAdvancedScreen extends Screen {
             btn -> this.onClose(), null));
 
         this.addRenderableWidget(new GlassButton(x0, rowY + 24, inner, 20, Component.literal("Retour au mode simple"),
-            btn -> this.minecraft.setScreenAndShow(new NickScreen(parent)), null));
+            btn -> this.minecraft.gui.setScreen(new NickScreen(parent)), null));
     }
 
     @Override
@@ -82,7 +82,7 @@ public class NickAdvancedScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.setScreenAndShow(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override

@@ -2,6 +2,7 @@ package fr.mine.customnick;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ public class MusicScreen extends Screen {
     @Override
     protected void init() {
         MusicTracker.listPlayers = true;
+        MusicHud.previewActive = true; // l'aperçu remplace le vrai HUD pendant les réglages
 
         pw = Math.min(this.width - 24, 380);
         ph = Math.min(this.height - 16, 176);
@@ -43,6 +45,8 @@ public class MusicScreen extends Screen {
         inner = pw - 24;
 
         glass(px + pw - 12 - 70, py + 10, 70, 18, Component.literal("Retour"), btn -> this.onClose(), () -> true);
+        glass(px + pw - 12 - 70 - 6 - 120, py + 10, 120, 18, Component.literal("Déplacer à la souris"),
+            btn -> this.minecraft.gui.setScreen(new HudEditorScreen(this)), null);
 
         // lecteurs détectés (+ ceux déjà ignorés) : bleu = affiché, gris = ignoré
         chipsLabelY = py + 42;
@@ -78,12 +82,16 @@ public class MusicScreen extends Screen {
         int sy = slidersLabelY + 11;
         this.addRenderableWidget(new ValueSlider(x0, sy, third, 18, "Taille", 50, 200, "%",
             () -> NickConfig.musicHudScale, v -> NickConfig.musicHudScale = v));
-        this.addRenderableWidget(new ValueSlider(x0 + third + 8, sy, third, 18, "X", 0, 100, "%",
-            () -> NickConfig.musicHudX, v -> NickConfig.musicHudX = v));
-        this.addRenderableWidget(new ValueSlider(x0 + 2 * (third + 8), sy, third, 18, "Y", 0, 100, "%",
-            () -> NickConfig.musicHudY, v -> NickConfig.musicHudY = v));
+        this.addRenderableWidget(new DecimalSlider(x0 + third + 8, sy, third, 18, "X", 0, 100, 0.1, "%",
+            () -> NickConfig.musicHudX, v -> NickConfig.musicHudX = (float) v));
+        this.addRenderableWidget(new DecimalSlider(x0 + 2 * (third + 8), sy, third, 18, "Y", 0, 100, 0.1, "%",
+            () -> NickConfig.musicHudY, v -> NickConfig.musicHudY = (float) v));
 
-        ph = Math.max(ph, sy + 18 + 12 - py);
+        // opacité du fond
+        this.addRenderableWidget(new ValueSlider(x0, sy + 22, inner, 18, "Opacité du fond", 0, 100, "%",
+            () -> NickConfig.musicHudOpacity, v -> NickConfig.musicHudOpacity = v));
+
+        ph = Math.max(ph, sy + 22 + 18 + 12 - py);
     }
 
     private GlassButton glass(int x, int y, int w, int h, Component message, Consumer<GlassButton> press, BooleanSupplier selected) {
@@ -150,15 +158,10 @@ public class MusicScreen extends Screen {
             graphics.text(this.font, "Aucun lecteur ouvert pour l'instant.", x0, chipsLabelY + 11, 0xFF8A93A0, true);
         }
         graphics.text(this.font, "Lecteurs ignorés (séparés par des virgules)", x0, fieldLabelY, 0xFFB4BCC8, true);
-        graphics.text(this.font, "Taille et position du HUD", x0, slidersLabelY, 0xFFB4BCC8, true);
+        graphics.text(this.font, "Apparence du HUD", x0, slidersLabelY, 0xFFB4BCC8, true);
 
         // aperçu du HUD à sa vraie place (morceau en cours, ou exemple)
-        MusicTracker.Track track = MusicTracker.current();
-        if (track == null || track.title().isEmpty()) {
-            track = new MusicTracker.Track("exemple", true, "Titre d'exemple", "Artiste",
-                43_000_000L, 189_000_000L, "", System.currentTimeMillis());
-        }
-        MusicHud.draw(graphics, track, NickConfig.musicHudX, NickConfig.musicHudY, NickConfig.musicHudScale);
+        MusicHud.draw(graphics, MusicHud.previewTrack(), NickConfig.musicHudX, NickConfig.musicHudY, NickConfig.musicHudScale);
     }
 
     private String status() {
@@ -175,13 +178,21 @@ public class MusicScreen extends Screen {
     }
 
     @Override
+    public boolean keyPressed(KeyEvent event) {
+        // flèches : pilotent le slider X / Y survolé, sans avoir à cliquer dessus
+        if (DecimalSlider.handleHovered(this, event)) return true;
+        return super.keyPressed(event);
+    }
+
+    @Override
     public void onClose() {
-        this.minecraft.setScreenAndShow(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override
     public void removed() {
         MusicTracker.listPlayers = false;
+        MusicHud.previewActive = false;
         NickConfig.save();
     }
 }

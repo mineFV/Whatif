@@ -1,21 +1,26 @@
 package fr.mine.customnick;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.resources.Identifier;
 import org.joml.Matrix3x2f;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
  * Formes lissées (anticrénelées), utilisées par tout le mod.
  *
- * Minecraft dessine en "pixels d'interface", qui valent chacun 2, 3 ou 4 vrais pixels :
- * un coin arrondi tracé à ce niveau fait des marches d'escalier. Ici, on repasse temporairement
- * en vrais pixels d'écran et on calcule pour chaque pixel du bord la part couverte par la forme,
- * qui devient son opacité. Résultat : des arrondis nets, sans effet "pixel".
+ * Minecraft dessine en "pixels d'interface", qui valent chacun 2, 3 ou 4 vrais pixels : un coin arrondi
+ * tracé à ce niveau fait des marches d'escalier. Ici on dessine en vrais pixels d'écran.
+ *
+ * Pour rester rapide (le menu affiche des dizaines d'éléments), les coins ne sont PAS calculés pixel
+ * par pixel à chaque image : pour chaque rayon (en vrais pixels), un disque ou un anneau anticrénelé
+ * est calculé UNE fois dans une petite texture blanche, puis ses quarts sont dessinés aux 4 coins,
+ * teintés dans la bonne couleur. Un rectangle arrondi = 4 textures + 3 aplats.
  *
  * Les coordonnées sont en unités du repère courant ; l'échelle (interface x zoom en cours)
  * est lue automatiquement dans la matrice de transformation.
@@ -30,56 +35,69 @@ public final class Smooth {
         return Math.max(0.01f, Minecraft.getInstance().getWindow().getGuiScale() * poseScale);
     }
 
-    // ------------------------------------------------------------------ cache des coins
+    // ------------------------------------------------------------------ textures de coins (cache)
 
-    /** Coin rempli de rayon R : premier pixel plein par ligne + pixels partiels (i, j, couverture). */
-    private record FillCorner(int[] fullStart, List<float[]> partial) {}
+    private static final Map<Integer, Identifier> DISKS = new HashMap<>();
+    private static final Map<Long, Identifier> RINGS = new HashMap<>();
 
-    /** Coin de contour de rayon R et d'épaisseur T : pixels (i, j, couverture). */
-    private record RingCorner(List<float[]> pixels) {}
-
-    private static final Map<Integer, FillCorner> FILL_CACHE = new HashMap<>();
-    private static final Map<Long, RingCorner> RING_CACHE = new HashMap<>();
-
-    private static FillCorner fillCorner(int r) {
-        return FILL_CACHE.computeIfAbsent(r, R -> {
-            int[] full = new int[R];
-            List<float[]> partial = new ArrayList<>();
-            for (int j = 0; j < R; j++) {
-                float cy = R - (j + 0.5f);
-                full[j] = R;
-                for (int i = 0; i < R; i++) {
-                    float cx = R - (i + 0.5f);
-                    float cov = clamp(0.5f - ((float) Math.sqrt(cx * cx + cy * cy) - R));
-                    if (cov >= 0.999f) {
-                        full[j] = i;
-                        break;
-                    }
-                    if (cov > 0.003f) partial.add(new float[]{i, j, cov});
+    /** Disque blanc anticrénelé de rayon r (texture 2r x 2r). */
+    private static Identifier disk(int r) {
+        return DISKS.computeIfAbsent(r, R -> {
+            int size = 2 * R;
+            NativeImage img = new NativeImage(size, size, false);
+            for (int y = 0; y < size; y++) {
+                for (int x = 0; x < size; x++) {
+                    float dx = R - (x + 0.5f);
+                    float dy = R - (y + 0.5f);
+                    float cov = clamp(0.5f - ((float) Math.sqrt(dx * dx + dy * dy) - R));
+                    img.setPixel(x, y, alpha(cov));
                 }
             }
-            return new FillCorner(full, partial);
+            return register("smooth/disk_" + R, img);
         });
     }
 
-    private static RingCorner ringCorner(int r, int t) {
+    /** Anneau blanc anticrénelé de rayon extérieur r et d'épaisseur t (texture 2r x 2r). */
+    private static Identifier ring(int r, int t) {
         long key = ((long) r << 32) | t;
-        return RING_CACHE.computeIfAbsent(key, kk -> {
-            List<float[]> pixels = new ArrayList<>();
+        return RINGS.computeIfAbsent(key, kk -> {
+            int size = 2 * r;
             int inner = r - t;
-            for (int j = 0; j < r; j++) {
-                for (int i = 0; i < r; i++) {
-                    float cx = r - (i + 0.5f);
-                    float cy = r - (j + 0.5f);
-                    float dist = (float) Math.sqrt(cx * cx + cy * cy);
+            NativeImage img = new NativeImage(size, size, false);
+            for (int y = 0; y < size; y++) {
+                for (int x = 0; x < size; x++) {
+                    float dx = r - (x + 0.5f);
+                    float dy = r - (y + 0.5f);
+                    float dist = (float) Math.sqrt(dx * dx + dy * dy);
                     float outer = clamp(0.5f - (dist - r));
-                    float in = inner > 0 ? clamp(0.5f - (dist - inner)) : ((i >= t && j >= t) ? 1f : 0f);
-                    float cov = outer - in;
-                    if (cov > 0.003f) pixels.add(new float[]{i, j, cov});
+                    float in;
+                    if (inner > 0) in = clamp(0.5f - (dist - inner));
+                    else in = (x >= t && x < size - t && y >= t && y < size - t) ? 1f : 0f;
+                    img.setPixel(x, y, alpha(outer - in));
                 }
             }
-            return new RingCorner(pixels);
+            return register("smooth/ring_" + r + "_" + t, img);
         });
+    }
+
+    private static Identifier register(String path, NativeImage img) {
+        Identifier id = Identifier.fromNamespaceAndPath("whatif", path);
+        Minecraft.getInstance().getTextureManager().register(id, new DynamicTexture(() -> "whatif " + path, img));
+        return id;
+    }
+
+    private static int alpha(float cov) {
+        int a = Math.round(clamp(cov) * 255f);
+        return (a << 24) | 0xFFFFFF;
+    }
+
+    /** Dessine les 4 quarts d'une texture 2r x 2r aux coins du rectangle (px, py, pw, ph). */
+    private static void corners(GuiGraphicsExtractor g, Identifier tex, int px, int py, int pw, int ph, int r, int argb) {
+        int size = 2 * r;
+        g.blit(RenderPipelines.GUI_TEXTURED, tex, px, py, 0, 0, r, r, size, size, argb);
+        g.blit(RenderPipelines.GUI_TEXTURED, tex, px + pw - r, py, r, 0, r, r, size, size, argb);
+        g.blit(RenderPipelines.GUI_TEXTURED, tex, px, py + ph - r, 0, r, r, r, size, size, argb);
+        g.blit(RenderPipelines.GUI_TEXTURED, tex, px + pw - r, py + ph - r, r, r, r, r, size, size, argb);
     }
 
     // ------------------------------------------------------------------ rectangle arrondi plein
@@ -96,29 +114,15 @@ public final class Smooth {
         int ph = Math.round(h * k);
         int pr = Math.max(0, Math.min(Math.round(r * k), Math.min(pw, ph) / 2));
 
-        int baseAlpha = (argb >>> 24) & 0xFF;
-        int rgb = argb & 0xFFFFFF;
-
-        if (ph - 2 * pr > 0) g.fill(px, py + pr, px + pw, py + ph - pr, argb);
-
-        if (pr > 0) {
-            FillCorner c = fillCorner(pr);
-            for (int j = 0; j < pr; j++) {
-                int full = c.fullStart()[j];
-                if (pw - 2 * full > 0) {
-                    g.fill(px + full, py + j, px + pw - full, py + j + 1, argb);
-                    g.fill(px + full, py + ph - 1 - j, px + pw - full, py + ph - j, argb);
-                }
+        if (pr == 0) {
+            g.fill(px, py, px + pw, py + ph, argb);
+        } else {
+            corners(g, disk(pr), px, py, pw, ph, pr, argb);
+            if (pw - 2 * pr > 0) {
+                g.fill(px + pr, py, px + pw - pr, py + pr, argb);               // bande du haut
+                g.fill(px + pr, py + ph - pr, px + pw - pr, py + ph, argb);     // bande du bas
             }
-            for (float[] p : c.partial()) {
-                int i = (int) p[0];
-                int j = (int) p[1];
-                int col = withAlpha(rgb, Math.round(baseAlpha * p[2]));
-                pixel(g, px + i, py + j, col);
-                pixel(g, px + pw - 1 - i, py + j, col);
-                pixel(g, px + i, py + ph - 1 - j, col);
-                pixel(g, px + pw - 1 - i, py + ph - 1 - j, col);
-            }
+            if (ph - 2 * pr > 0) g.fill(px, py + pr, px + pw, py + ph - pr, argb); // milieu
         }
 
         g.pose().popMatrix();
@@ -140,10 +144,7 @@ public final class Smooth {
         int ph = Math.round(h * k);
         int pr = Math.max(0, Math.min(Math.round(r * k), Math.min(pw, ph) / 2));
         int pt = Math.max(1, Math.round(thickness * k));
-        pt = Math.min(pt, Math.min(pw, ph) / 2);
-
-        int baseAlpha = (argb >>> 24) & 0xFF;
-        int rgb = argb & 0xFFFFFF;
+        pt = Math.min(pt, Math.max(1, Math.min(pw, ph) / 2));
 
         // côtés droits
         if (pw - 2 * pr > 0) {
@@ -155,18 +156,7 @@ public final class Smooth {
             g.fill(px + pw - pt, py + pr, px + pw, py + ph - pr, argb);
         }
 
-        // coins
-        if (pr > 0) {
-            for (float[] p : ringCorner(pr, pt).pixels()) {
-                int i = (int) p[0];
-                int j = (int) p[1];
-                int col = withAlpha(rgb, Math.round(baseAlpha * p[2]));
-                pixel(g, px + i, py + j, col);
-                pixel(g, px + pw - 1 - i, py + j, col);
-                pixel(g, px + i, py + ph - 1 - j, col);
-                pixel(g, px + pw - 1 - i, py + ph - 1 - j, col);
-            }
-        }
+        if (pr > 0) corners(g, ring(pr, pt), px, py, pw, ph, pr, argb);
 
         g.pose().popMatrix();
     }
@@ -175,7 +165,7 @@ public final class Smooth {
 
     /**
      * Vague de x0 à x1 autour de la ligne cy : amplitude, longueur d'onde et épaisseur en unités du repère.
-     * `phase` en radians (pour l'animer).
+     * `phase` en radians (pour l'animer). Utilisée seulement par le HUD musique (une seule vague).
      */
     public static void wave(GuiGraphicsExtractor g, float x0, float x1, float cy,
                             float amplitude, float wavelength, float thickness, double phase, int argb) {

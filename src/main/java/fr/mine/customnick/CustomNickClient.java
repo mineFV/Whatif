@@ -34,7 +34,7 @@ public class CustomNickClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register((Minecraft mc) -> {
             if (!openMenuRequested) return;
             openMenuRequested = false;
-            mc.setScreenAndShow(new QolScreen(mc.gui.screen()));
+            mc.gui.setScreen(new QolScreen(mc.gui.screen()));
         });
     }
 }

@@ -44,6 +44,8 @@ public class QolScreen extends Screen {
         int rx = x0 + inner - 10 - bw;
 
         glass(px + pw - 12 - 70, py + 10, 70, 18, Component.literal("Fermer"), btn -> this.onClose(), () -> true);
+        glass(px + pw - 12 - 70 - 6 - 100, py + 10, 100, 18, Component.literal("Éditer les HUD"),
+            btn -> this.minecraft.gui.setScreen(new HudEditorScreen(this)), null);
 
         // carte 1 : pseudo personnalisé
         glass(rx, card1Y + 6, bw, 20, toggleLabel(NickConfig.enabled), btn -> {
@@ -52,7 +54,7 @@ public class QolScreen extends Screen {
         }, () -> NickConfig.enabled);
 
         glass(rx, card1Y + 30, bw, 20, Component.literal("Configurer"),
-            btn -> this.minecraft.setScreenAndShow(new NickScreen(this)), null);
+            btn -> this.minecraft.gui.setScreen(new NickScreen(this)), null);
 
         // carte 2 : Dark Screen
         glass(rx, card2Y + 6, bw, 20, toggleLabel(NickConfig.darkScreenEnabled), btn -> {
@@ -75,7 +77,7 @@ public class QolScreen extends Screen {
         }, () -> NickConfig.musicHudEnabled);
 
         glass(rx, card3Y + 30, bw, 20, Component.literal("Configurer"),
-            btn -> this.minecraft.setScreenAndShow(new MusicScreen(this)), null);
+            btn -> this.minecraft.gui.setScreen(new MusicScreen(this)), null);
     }
 
     private GlassButton glass(int x, int y, int w, int h, Component message, Consumer<GlassButton> press, BooleanSupplier selected) {
@@ -136,7 +138,7 @@ public class QolScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.setScreenAndShow(parent);
+        this.minecraft.gui.setScreen(parent);
     }
 
     @Override

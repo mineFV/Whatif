@@ -3,9 +3,10 @@
   "id": "whatif",
   "version": "${version}",
   "name": "WhatIf",
-  "description": "Petit mod QoL côté client : pseudo personnalisé et Dark Screen. Menu : /whatif.",
+  "description": "Petit mod QoL côté client : pseudo personnalisé, Dark Screen et HUD musique. Menu : /whatif.",
   "authors": ["Mine"],
   "license": "MIT",
+  "icon": "assets/whatif/icon.png",
   "environment": "client",
   "entrypoints": {
     "client": ["fr.mine.customnick.CustomNickClient"]

@@ -15,8 +15,8 @@ import net.minecraft.resources.Identifier;
 public final class MusicHud {
     private MusicHud() {}
 
-    private static final int W = 200;
-    private static final int H = 62;
+    public static final int W = 200;
+    public static final int H = 62;
     private static final int ART = 48;
     private static final int TEXT_X = 64;
     private static final int DEFAULT_BG = 0x2A3236;
@@ -27,15 +27,26 @@ public final class MusicHud {
     private static float curB = DEFAULT_BG & 0xFF;
     private static long lastFrame = 0;
 
+    /** Vrai pendant qu'un écran affiche son propre aperçu du HUD : le vrai HUD ne se dessine pas en double. */
+    public static volatile boolean previewActive = false;
+
+    /** Morceau en cours, ou un exemple si rien ne joue (pour les aperçus). */
+    public static MusicTracker.Track previewTrack() {
+        MusicTracker.Track track = MusicTracker.current();
+        if (track != null && !track.title().isEmpty()) return track;
+        return new MusicTracker.Track("exemple", true, "Titre d'exemple", "Artiste",
+            43_000_000L, 189_000_000L, "", System.currentTimeMillis());
+    }
+
     public static void draw(GuiGraphicsExtractor g) {
-        if (!NickConfig.musicHudEnabled) return;
+        if (!NickConfig.musicHudEnabled || previewActive) return;
         MusicTracker.Track track = MusicTracker.current();
         if (track == null || track.title().isEmpty()) return;
 
         draw(g, track, NickConfig.musicHudX, NickConfig.musicHudY, NickConfig.musicHudScale);
     }
 
-    public static void draw(GuiGraphicsExtractor g, MusicTracker.Track track, int xPercent, int yPercent, int scalePercent) {
+    public static void draw(GuiGraphicsExtractor g, MusicTracker.Track track, float xPercent, float yPercent, int scalePercent) {
         Font font = Minecraft.getInstance().font;
         float scale = scalePercent / 100f;
         float x = (g.guiWidth() - W * scale) * xPercent / 100f;
@@ -48,8 +59,10 @@ public final class MusicHud {
         g.pose().translate(x, y);
         g.pose().scale(scale, scale);
 
-        // fond : couleur moyenne de la pochette
-        Smooth.roundedRect(g, 0, 0, W, H, 14, 0xEE000000 | backgroundColor(average));
+        // fond : couleur moyenne de la pochette, opacité réglable
+        int bg = backgroundColor(average);
+        int alpha = Math.round(255f * NickConfig.musicHudOpacity / 100f);
+        Smooth.roundedRect(g, 0, 0, W, H, 14, (alpha << 24) | bg);
 
         // pochette
         int ay = (H - ART) / 2;
